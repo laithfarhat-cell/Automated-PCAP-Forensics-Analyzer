@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=77.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automated-pcap-forensics-analyzer"
+version = "1.0.0"
+description = "Production-grade, memory-safe CLI network forensics analyzer for PCAP/PCAPNG captures with flow reconstruction, cleartext extraction, DNS tunneling/DGA detection, HTTP file carving, Threat Intel matching, and multi-format reporting."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "DFIR Engineering Team" }
+]
+keywords = [
+    "dfir",
+    "pcap",
+    "network-forensics",
+    "incident-response",
+    "threat-intelligence",
+    "dns-tunneling",
+    "dga",
+    "file-carving",
+    "scapy",
+    "dpkt",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Networking :: Monitoring",
+]
+dependencies = [
+    "scapy>=2.5.0",
+    "dpkt>=1.9.8",
+    "rich>=13.7.0",
+    "jinja2>=3.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+]
+
+[project.scripts]
+pcap-forensics = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+include = ["core*", "analyzers*", "reporters*"]
+
+[tool.setuptools.package-data]
+reporters = ["templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFIR PCAP Forensics Report — {{ report.metadata.file_name }}</title>
+<style>
+  :root {
+    --bg-primary: #0b0f19;
+    --bg-secondary: #111827;
+    --bg-card: #161f33;
+    --bg-card-alt: #1c2740;
+    --border: #26334d;
+    --border-bright: #36496d;
+    --text-primary: #e5edf8;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-cyan: #22d3ee;
+    --accent-blue: #3b82f6;
+    --accent-indigo: #818cf8;
+    --sev-critical: #ef4444;
+    --sev-critical-bg: rgba(239, 68, 68, 0.16);
+    --sev-high: #f97316;
+    --sev-high-bg: rgba(249, 115, 22, 0.16);
+    --sev-medium: #eab308;
+    --sev-medium-bg: rgba(234, 179, 8, 0.15);
+    --sev-low: #38bdf8;
+    --sev-low-bg: rgba(56, 189, 248, 0.15);
+    --sev-clean: #10b981;
+    --sev-clean-bg: rgba(16, 185, 129, 0.15);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* Top Navigation Bar */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(11, 15, 25, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 58px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+  }
+  .brand-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 12px var(--accent-cyan);
+  }
+  .nav-links {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-links a:hover {
+    background: var(--bg-card-alt);
+    color: var(--accent-cyan);
+  }
+
+  .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 24px 24px 64px;
+  }
+
+  /* Hero Executive Header */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: center;
+    background: linear-gradient(135deg, #131c31 0%, #0f172a 60%, #172038 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .hero-meta span strong { color: var(--text-primary); }
+
+  /* Risk Gauge */
+  .risk-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(11, 15, 25, 0.65);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+  }
+  .risk-label-wrap { text-align: right; }
+  .risk-caption {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .risk-verdict {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  .risk-CRITICAL { color: var(--sev-critical); }
+  .risk-HIGH { color: var(--sev-high); }
+  .risk-MEDIUM { color: var(--sev-medium); }
+  .risk-LOW { color: var(--sev-low); }
+  .risk-CLEAN { color: var(--sev-clean); }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 16px 18px;
+  }
+  .kpi-title {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Section Cards */
+  .section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 22px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-count {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--bg-card-alt);
+    color: var(--accent-cyan);
+    border: 1px solid var(--border-bright);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-CRITICAL { background: var(--sev-critical-bg); color: #fca5a5; border: 1px solid rgba(239,68,68,0.45); }
+  .badge-HIGH { background: var(--sev-high-bg); color: #fdba74; border: 1px solid rgba(249,115,22,0.45); }
+  .badge-MEDIUM { background: var(--sev-medium-bg); color: #fde047; border: 1px solid rgba(234,179,8,0.4); }
+  .badge-LOW { background: var(--sev-low-bg); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.4); }
+  .badge-INFO, .badge-CLEAN { background: var(--sev-clean-bg); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+  .badge-tag {
+    background: rgba(129, 140, 248, 0.14);
+    color: #c7d2fe;
+    border: 1px solid rgba(129, 140, 248, 0.35);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    margin-right: 4px;
+    display: inline-block;
+  }
+
+  /* Two-column layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 18px;
+  }
+
+  /* Metadata Definition Table */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px 18px;
+  }
+  .meta-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .meta-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+  .meta-val {
+    font-size: 13px;
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 12.2px;
+  }
+  code {
+    background: rgba(15, 23, 42, 0.85);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid rgba(54, 73, 109, 0.45);
+    color: #bae6fd;
+  }
+
+  /* Interactive Controls */
+  .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-input {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-bright);
+    color: var(--text-primary);
+    border-radius: 7px;
+    padding: 6px 11px;
+    font-size: 12.5px;
+    min-width: 220px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent-cyan); }
+  .filter-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    background: rgba(34, 211, 238, 0.1);
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border-bright);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    cursor: pointer;
+    margin-left: 6px;
+    font-family: var(--sans);
+  }
+  .copy-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.8px;
+  }
+  thead th {
+    text-align: left;
+    background: #101727;
+    color: var(--text-secondary);
+    font-size: 11.2px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(38, 51, 77, 0.65);
+    vertical-align: top;
+    word-break: break-word;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(30, 41, 66, 0.55); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Protocol Bars */
+  .proto-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 90px 90px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .proto-bar-track {
+    height: 10px;
+    background: var(--bg-secondary);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .proto-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+  }
+
+  /* Recommendations & Alerts */
+  .rec-list {
+    margin: 0;
+    padding-left: 18px;
+  }
+  .rec-list li {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+  .cred-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-left: 4px solid var(--sev-critical);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    color: #fecaca;
+    font-size: 13px;
+  }
+
+  /* Session Sub-cards */
+  .sub-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .sub-card h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--accent-cyan);
+  }
+  pre.transcript {
+    background: #080c14;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #cbd5e1;
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+  }
+
+  /* Timeline */
+  .timeline-list {
+    border-left: 2px solid var(--border-bright);
+    margin-left: 8px;
+    padding-left: 18px;
+  }
+  .tl-item {
+    position: relative;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .tl-item::before {
+    content: "";
+    position: absolute;
+    left: -25px;
+    top: 14px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    border: 2px solid var(--bg-card);
+  }
+  .tl-item.tl-CRITICAL::before { background: var(--sev-critical); }
+  .tl-item.tl-HIGH::before { background: var(--sev-high); }
+  .tl-item.tl-MEDIUM::before { background: var(--sev-medium); }
+  .tl-meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .empty-state {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 12px 4px;
+  }
+
+  /* Copy Toast */
+  #toast {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid var(--accent-cyan);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 780px) {
+    .hero { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff; color: #111; }
+    .topbar, .controls, .copy-btn { display: none !important; }
+    .section, .kpi-card, .hero, .sub-card, .meta-item {
+      background: #fff !important;
+      border-color: #ccc !important;
+      color: #111 !important;
+      break-inside: avoid;
+    }
+    code { background: #f3f4f6; color: #111; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    <span>Automated PCAP Forensics Analyzer <span style="color:var(--text-muted);font-weight:400;">v{{ report.tool_version }}</span></span>
+  </div>
+  <div class="nav-links">
+    <a href="#executive">Executive Summary</a>
+    <a href="#metadata">Metadata</a>
+    <a href="#timeline">Timeline</a>
+    <a href="#traffic">Traffic &amp; Flows</a>
+    <a href="#iocs">Threat Intel IoCs</a>
+    <a href="#cleartext">Cleartext</a>
+    <a href="#dns">DNS Forensics</a>
+    <a href="#carved">Carved Files</a>
+  </div>
+</nav>
+
+<main class="container">
+
+  <!-- Hero Banner -->
+  <section class="hero" id="executive">
+    <div>
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent-cyan);font-weight:700;margin-bottom:4px;">
+        DFIR Network Forensics Investigation Report
+      </div>
+      <h1>{{ report.metadata.file_name }}</h1>
+      <div class="hero-meta">
+        <span><strong>Format:</strong> {{ report.metadata.capture_format }}</span>
+        <span><strong>Generated:</strong> {{ report.generated_at_utc }}</span>
+        <span><strong>Capture Window:</strong> {{ report.metadata.first_packet_time | fmt_utc }} &rarr; {{ report.metadata.last_packet_time | fmt_utc }}</span>
+        <span><strong>Duration:</strong> {{ report.metadata.duration_seconds | fmt_duration }}</span>
+      </div>
+    </div>
+
+    {% set gauge_circ = 213.6 %}
+    {% set gauge_offset = gauge_circ - (gauge_circ * report.risk_score / 100.0) %}
+    {% set gauge_color = '#ef4444' if report.risk_level == 'CRITICAL' else ('#f97316' if report.risk_level == 'HIGH' else ('#eab308' if report.risk_level == 'MEDIUM' else ('#38bdf8' if report.risk_level == 'LOW' else '#10b981'))) %}
+    <div class="risk-box">
+      <div class="risk-label-wrap">
+        <div class="risk-caption">Threat Verdict</div>
+        <div class="risk-verdict risk-{{ report.risk_level }}">{{ report.risk_level }}</div>
+        <div style="font-size:12px;color:var(--text-secondary);">Risk Score: {{ report.risk_score }}/100</div>
+      </div>
+      <svg width="82" height="82" viewBox="0 0 82 82" aria-label="Risk score gauge">
+        <circle cx="41" cy="41" r="34" fill="none" stroke="#1e293b" stroke-width="8"></circle>
+        <circle cx="41" cy="41" r="34" fill="none" stroke="{{ gauge_color }}" stroke-width="8"
+                stroke-linecap="round"
+                stroke-dasharray="{{ gauge_circ }}"
+                stroke-dashoffset="{{ "%.1f"|format(gauge_offset) }}"
+                transform="rotate(-90 41 41)"></circle>
+        <text x="41" y="46" text-anchor="middle" fill="#e5edf8" font-size="18" font-weight="700" font-family="sans-serif">{{ report.risk_score }}</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- KPI Cards -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-title">Total Packets</div>
+      <div class="kpi-value">{{ "{:,}".format(report.metadata.total_packets) }}</div>
+      <div class="kpi-sub">{{ report.metadata.total_bytes | fmt_bytes }} wire volume</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Network Flows</div>
+      <div class="kpi-value">{{ "{:,}".format(report.metadata.total_flows) }}</div>
+      <div class="kpi-sub">{{ report.metadata.unique_ips }} unique IP addresses</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Forensic Findings</div>
+      <div class="kpi-value">{{ report.findings | length }}</div>
+      <div class="kpi-sub">
+        <span style="color:#fca5a5;">{{ report.severity_counts.CRITICAL }} Crit</span> &middot;
+        <span style="color:#fdba74;">{{ report.severity_counts.HIGH }} High</span> &middot;
+        <span style="color:#fde047;">{{ report.severity_counts.MEDIUM }} Med</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Threat Intel Hits</div>
+      <div class="kpi-value" style="color:{{ '#fca5a5' if report.ioc_matches else '#6ee7b7' }};">{{ report.ioc_matches | length }}</div>
+      <div class="kpi-sub">{{ 'Watchlist active' if report.ioc_watchlist_loaded else 'No watchlist loaded' }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Credentials Recovered</div>
+      <div class="kpi-value" style="color:{{ '#fdba74' if report.credentials else '#6ee7b7' }};">{{ report.credentials | length }}</div>
+      <div class="kpi-sub">HTTP / FTP / SMTP / Telnet</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">DNS Anomalies</div>
+      <div class="kpi-value">{{ report.dns_anomalies | length }}</div>
+      <div class="kpi-sub">NXDOMAIN: {{ report.dns_stats.get("nxdomain_rate_pct", 0.0) }}%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Carved HTTP Objects</div>
+      <div class="kpi-value">{{ report.carved_artifacts | length }}</div>
+      <div class="kpi-sub">{{ report.carved_artifacts | selectattr("mime_mismatch") | list | length }} MIME mismatches</div>
+    </div>
+  </section>
+
+  <!-- Prioritized Findings & Recommendations -->
+  <section class="section">
+    <div class="section-header">
+      <h2>Prioritized Forensic Findings <span class="section-count">{{ report.findings | length }}</span></h2>
+      <div class="controls">
+        <button class="filter-btn active" onclick="filterSeverity('ALL', this)">All</button>
+        <button class="filter-btn" onclick="filterSeverity('CRITICAL', this)">Critical ({{ report.severity_counts.CRITICAL }})</button>
+        <button class="filter-btn" onclick="filterSeverity('HIGH', this)">High ({{ report.severity_counts.HIGH }})</button>
+        <button class="filter-btn" onclick="filterSeverity('MEDIUM', this)">Medium ({{ report.severity_counts.MEDIUM }})</button>
+        <input type="text" class="search-input" placeholder="Filter findings..." oninput="filterTable('findings-table', this.value)">
+      </div>
+    </div>
+
+    {% if report.findings %}
+    <div class="table-wrap" style="margin-bottom:18px;">
+      <table id="findings-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Severity</th>
+            <th>Timestamp (UTC)</th>
+            <th>Category</th>
+            <th>Finding &amp; Forensic Evidence</th>
+            <th>MITRE ATT&amp;CK</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in report.findings %}
+          <tr data-severity="{{ f.severity }}">
+            <td><code>{{ f.finding_id }}</code></td>
+            <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+            <td class="mono" style="white-space:nowrap;">{{ f.timestamp | fmt_utc }}</td>
+            <td style="white-space:nowrap;">{{ f.category }}</td>
+            <td>
+              <div style="font-weight:600;margin-bottom:3px;">{{ f.title }}</div>
+              <div style="color:var(--text-secondary);font-size:12.2px;">{{ f.description }}</div>
+            </td>
+            <td style="white-space:nowrap;">
+              {% for tid in f.mitre_attack %}<span class="badge-tag">{{ tid }}</span>{% endfor %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No suspicious or malicious findings were triggered for this capture.</p>
+    {% endif %}
+
+    <div class="sub-card" style="margin-bottom:0;">
+      <h3>Recommended Incident Response &amp; Containment Actions</h3>
+      <ul class="rec-list">
+        {% for rec in report.recommendations %}
+        <li>{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Capture Metadata & Chain of Custody -->
+  <section class="section" id="metadata">
+    <div class="section-header">
+      <h2>Capture Metadata &amp; Chain of Custody</h2>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="meta-label">Capture File Path</div>
+        <div class="meta-val mono">{{ report.metadata.file_path }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">File Size &amp; Format</div>
+        <div class="meta-val">{{ report.metadata.file_size | fmt_bytes }} ({{ report.metadata.file_size }} bytes) &mdash; {{ report.metadata.capture_format }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Evidence MD5</div>
+        <div class="meta-val"><code>{{ report.metadata.file_md5 }}</code><button class="copy-btn" onclick="copyText('{{ report.metadata.file_md5 }}')">Copy</button></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Evidence SHA-256</div>
+        <div class="meta-val"><code>{{ report.metadata.file_sha256 }}</code><button class="copy-btn" onclick="copyText('{{ report.metadata.file_sha256 }}')">Copy</button></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">First Packet (UTC)</div>
+        <div class="meta-val mono">{{ report.metadata.first_packet_time | fmt_utc }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Last Packet (UTC)</div>
+        <div class="meta-val mono">{{ report.metadata.last_packet_time | fmt_utc }}</div>
+      </div>
+      {% if report.metadata.tls_snis %}
+      <div class="meta-item" style="grid-column: 1 / -1;">
+        <div class="meta-label">Extracted TLS ClientHello SNIs</div>
+        <div class="meta-val">
+          {% for sni in report.metadata.tls_snis %}<code style="margin-right:6px;">{{ sni }}</code>{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Incident Timeline -->
+  <section class="section" id="timeline">
+    <div class="section-header">
+      <h2>Incident Timeline <span class="section-count">{{ report.timeline | length }}</span></h2>
+    </div>
+    {% if report.timeline %}
+    <div class="timeline-list">
+      {% for ev in report.timeline[:80] %}
+      <div class="tl-item tl-{{ ev.severity }}">
+        <div class="tl-meta">
+          <span class="badge badge-{{ ev.severity }}">{{ ev.severity }}</span>
+          <span class="mono">{{ ev.timestamp | fmt_utc }}</span>
+          <span><strong>{{ ev.category }}</strong></span>
+          <span><code>{{ ev.source }}</code> &rarr; <code>{{ ev.destination }}</code></span>
+        </div>
+        <div>{{ ev.summary }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No notable incident timeline events recorded.</p>
+    {% endif %}
+  </section>
+
+  <!-- Protocol Distribution & Top Talkers -->
+  <section class="section" id="traffic">
+    <div class="section-header">
+      <h2>Protocol Distribution &amp; Top Talkers</h2>
+    </div>
+    <div class="grid-2" style="margin-bottom:20px;">
+      <div class="sub-card" style="margin-bottom:0;">
+        <h3>Protocol Breakdown</h3>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;">
+          Application protocols (DNS, HTTP, TLS) are measured alongside their underlying transport (TCP/UDP).
+        </div>
+        {% for proto, stats in report.metadata.protocol_distribution.items() %}
+        <div class="proto-row">
+          <strong style="font-size:12.5px;">{{ proto }}</strong>
+          <div class="proto-bar-track">
+            <div class="proto-bar-fill" style="width:{{ [stats.percentage, 100] | min }}%;"></div>
+          </div>
+          <span class="num mono" style="font-size:12px;">{{ stats.packets }} pkts</span>
+          <span class="num" style="color:var(--text-secondary);font-size:12px;">{{ "%.1f"|format(stats.percentage) }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="sub-card" style="margin-bottom:0;">
+        <h3>Top Talkers (Combined Host Traffic)</h3>
+        {% if report.metadata.top_talkers_hosts %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>IP Address</th>
+                <th class="num">Packets</th>
+                <th class="num">Total Volume</th>
+                <th class="num">TX / RX</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for h in report.metadata.top_talkers_hosts %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><code>{{ h.ip }}</code></td>
+                <td class="num">{{ "{:,}".format(h.total_packets) }}</td>
+                <td class="num">{{ h.total_bytes | fmt_bytes }}</td>
+                <td class="num" style="color:var(--text-secondary);">{{ h.sent_bytes | fmt_bytes }} / {{ h.recv_bytes | fmt_bytes }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No IP traffic recorded.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <h3 style="margin:0 0 10px;font-size:14.5px;color:var(--text-secondary);">Top Bidirectional Network Conversations</h3>
+    {% if report.metadata.top_flows %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Flow ID</th>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Proto</th>
+            <th>App / SNI</th>
+            <th class="num">Packets</th>
+            <th class="num">Volume</th>
+            <th class="num">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fl in report.metadata.top_flows %}
+          <tr>
+            <td><code>{{ fl.flow_id }}</code></td>
+            <td><code>{{ fl.src_ip }}:{{ fl.src_port }}</code></td>
+            <td><code>{{ fl.dst_ip }}:{{ fl.dst_port }}</code></td>
+            <td>{{ fl.protocol }}</td>
+            <td>
+              {% for ap in fl.app_protocols %}<span class="badge-tag">{{ ap }}</span>{% endfor %}
+              {% if fl.tls_sni %}<code>{{ fl.tls_sni }}</code>{% endif %}
+            </td>
+            <td class="num">{{ fl.packet_count }}</td>
+            <td class="num">{{ fl.byte_volume | fmt_bytes }}</td>
+            <td class="num">{{ fl.duration_seconds | fmt_duration }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No flows reconstructed.</p>
+    {% endif %}
+  </section>
+
+  <!-- Threat Intelligence & Extracted IoCs -->
+  <section class="section" id="iocs">
+    <div class="section-header">
+      <h2>Threat Intelligence &amp; Extracted IoCs <span class="section-count">{{ report.ioc_matches | length }}</span></h2>
+      <div style="font-size:12px;color:var(--text-secondary);">
+        Watchlist: <code>{{ report.ioc_watchlist_path or 'None' }}</code>
+      </div>
+    </div>
+    {% if report.ioc_matches %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Type</th>
+            <th>Matched Indicator</th>
+            <th>Threat Classification</th>
+            <th class="num">Hits</th>
+            <th>MITRE ATT&amp;CK</th>
+            <th>Observed Context</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in report.ioc_matches %}
+          <tr>
+            <td><span class="badge badge-{{ m.severity }}">{{ m.severity }}</span></td>
+            <td><code>{{ m.indicator_type }}</code></td>
+            <td>
+              <code>{{ m.indicator }}</code>
+              <button class="copy-btn" onclick="copyText('{{ m.indicator }}')">Copy</button>
+            </td>
+            <td>
+              <div style="font-weight:600;">{{ m.threat_type }}</div>
+              <div style="font-size:12px;color:var(--text-secondary);">{{ m.description }}</div>
+              <div style="font-size:11px;color:var(--text-muted);">Source: {{ m.source }}</div>
+            </td>
+            <td class="num">{{ m.hit_count }}</td>
+            <td>{% for t in m.mitre_attack %}<span class="badge-tag">{{ t }}</span>{% endfor %}</td>
+            <td style="font-size:12px;color:var(--text-secondary);">
+              {% for c in m.contexts[:3] %}<div>&bull; {{ c }}</div>{% endfor %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No Threat Intelligence watchlist matches detected.</p>
+    {% endif %}
+  </section>
+
+  <!-- Cleartext Protocol Artifacts -->
+  <section class="section" id="cleartext">
+    <div class="section-header">
+      <h2>Cleartext Protocol Artifacts <span class="section-count">{{ report.http_artifacts | length }} HTTP &middot; {{ report.credentials | length }} Creds</span></h2>
+      <input type="text" class="search-input" placeholder="Search HTTP requests..." oninput="filterTable('http-table', this.value)">
+    </div>
+
+    {% if report.credentials %}
+    <div class="cred-warning">
+      <strong>Cleartext Credential Exposure:</strong> {{ report.credentials | length }} credential set(s) were recovered in unencrypted network traffic. Rotate affected accounts immediately.
+    </div>
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp (UTC)</th>
+            <th>Protocol</th>
+            <th>Source IP</th>
+            <th>Destination</th>
+            <th>Username</th>
+            <th>Password / Secret</th>
+            <th>Context</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in report.credentials %}
+          <tr>
+            <td class="mono" style="white-space:nowrap;">{{ c.timestamp | fmt_utc }}</td>
+            <td><span class="badge badge-HIGH">{{ c.protocol }}</span></td>
+            <td><code>{{ c.src_ip }}</code></td>
+            <td><code>{{ c.dst_ip }}:{{ c.dst_port }}</code></td>
+            <td><code>{{ c.username }}</code></td>
+            <td><code style="color:#fca5a5;">{{ c.password }}</code></td>
+            <td style="font-size:12px;color:var(--text-secondary);">{{ c.context }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <h3 style="margin:0 0 10px;font-size:14.5px;color:var(--text-secondary);">HTTP Requests ({{ report.http_artifacts | length }})</h3>
+    {% if report.http_artifacts %}
+    <div class="table-wrap" style="margin-bottom:18px;">
+      <table id="http-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Client &rarr; Server</th>
+            <th>Method</th>
+            <th>URL</th>
+            <th>User-Agent</th>
+            <th>Auth / POST Parameters</th>
+            <th>Flags</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in report.http_artifacts[:150] %}
+          <tr>
+            <td class="mono" style="white-space:nowrap;">{{ h.timestamp | fmt_utc }}</td>
+            <td class="mono" style="white-space:nowrap;">{{ h.src_ip }} &rarr; {{ h.dst_ip }}:{{ h.dst_port }}</td>
+            <td><span class="badge-tag">{{ h.method }}</span></td>
+            <td><code>{{ h.full_url }}</code></td>
+            <td style="font-size:12px;color:var(--text-secondary);">{{ h.user_agent or '-' }}</td>
+            <td style="font-size:12px;">
+              {% if h.auth_type %}
+                <div><strong>{{ h.auth_type }}</strong>: <code>{{ h.auth_decoded_user }}:{{ h.auth_decoded_pass }}</code></div>
+              {% endif %}
+              {% if h.post_params %}
+                {% for pk, pv in h.post_params.items() %}
+                  <div><code>{{ pk }}={{ pv | join(",") }}</code></div>
+                {% endfor %}
+              {% endif %}
+              {% if not h.auth_type and not h.post_params %}-{% endif %}
+            </td>
+            <td style="font-size:11.5px;color:#fde047;">
+              {% for ind in h.suspicious_indicators %}<div>&bull; {{ ind }}</div>{% endfor %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No cleartext HTTP requests observed.</p>
+    {% endif %}
+
+    <div class="grid-2">
+      <!-- FTP Sessions -->
+      <div class="sub-card">
+        <h3>FTP Sessions ({{ report.ftp_sessions | length }})</h3>
+        {% if report.ftp_sessions %}
+          {% for ftp in report.ftp_sessions %}
+          <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+            <div><code>{{ ftp.src_ip }}:{{ ftp.src_port }}</code> &rarr; <code>{{ ftp.dst_ip }}:{{ ftp.dst_port }}</code></div>
+            <div style="font-size:12.5px;margin-top:4px;">
+              User: <code>{{ ftp.username or 'N/A' }}</code> &middot;
+              Pass: <code>{{ ftp.password or 'N/A' }}</code> &middot;
+              Auth: <span class="badge-tag">{{ ftp.auth_status }}</span>
+            </div>
+            {% if ftp.transferred_files %}
+            <div style="font-size:12px;color:#fde047;margin-top:4px;">Files: {{ ftp.transferred_files | join(", ") }}</div>
+            {% endif %}
+            <pre class="transcript">{% for cmd in ftp.commands %}[{{ cmd.direction }}] {{ cmd.text }}
+{% endfor %}</pre>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p class="empty-state">No FTP control sessions captured.</p>
+        {% endif %}
+      </div>
+
+      <!-- SMTP & Telnet Sessions -->
+      <div>
+        <div class="sub-card">
+          <h3>SMTP Email Sessions ({{ report.smtp_sessions | length }})</h3>
+          {% if report.smtp_sessions %}
+            {% for smtp in report.smtp_sessions %}
+            <div style="margin-bottom:10px;">
+              <div><code>{{ smtp.src_ip }}</code> &rarr; <code>{{ smtp.dst_ip }}:{{ smtp.dst_port }}</code></div>
+              <div style="font-size:12.5px;margin-top:4px;">
+                <strong>MAIL FROM:</strong> <code>{{ smtp.mail_from or 'N/A' }}</code><br>
+                <strong>RCPT TO:</strong> <code>{{ (smtp.rcpt_to | join(", ")) or 'N/A' }}</code><br>
+                <strong>Subject:</strong> {{ smtp.subject or 'N/A' }}
+              </div>
+              {% if smtp.body_preview %}
+              <pre class="transcript">{{ smtp.body_preview }}</pre>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="empty-state">No SMTP sessions captured.</p>
+          {% endif %}
+        </div>
+
+        <div class="sub-card">
+          <h3>Telnet Sessions ({{ report.telnet_sessions | length }})</h3>
+          {% if report.telnet_sessions %}
+            {% for tel in report.telnet_sessions %}
+            <div>
+              <div><code>{{ tel.src_ip }}:{{ tel.src_port }}</code> &rarr; <code>{{ tel.dst_ip }}:{{ tel.dst_port }}</code></div>
+              <div style="font-size:12.5px;margin-top:4px;">
+                <strong>Commands:</strong>
+                {% for cmd in tel.commands %}<code style="margin-right:5px;">{{ cmd }}</code>{% endfor %}
+              </div>
+              {% if tel.transcript_preview %}
+              <pre class="transcript">{{ tel.transcript_preview }}</pre>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="empty-state">No Telnet sessions captured.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DNS Forensics & Anomalies -->
+  <section class="section" id="dns">
+    <div class="section-header">
+      <h2>DNS Forensics &amp; Tunneling / DGA Analysis <span class="section-count">{{ report.dns_anomalies | length }} Anomalies &middot; {{ report.passive_dns | length }} Domains</span></h2>
+      <input type="text" class="search-input" placeholder="Search Passive DNS..." oninput="filterTable('pdns-table', this.value)">
+    </div>
+
+    <div class="meta-grid" style="margin-bottom:18px;">
+      <div class="meta-item">
+        <div class="meta-label">Total DNS Packets</div>
+        <div class="meta-val">{{ report.dns_stats.get("total_dns_packets", 0) }} ({{ report.dns_stats.get("total_queries", 0) }} queries / {{ report.dns_stats.get("total_responses", 0) }} responses)</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Unique Domains Queried</div>
+        <div class="meta-val">{{ report.dns_stats.get("unique_domains", 0) }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">NXDOMAIN Rate</div>
+        <div class="meta-val" style="color:{{ '#fca5a5' if report.dns_stats.get('nxdomain_rate_pct', 0) >= 30 else 'inherit' }};">
+          {{ report.dns_stats.get("nxdomain_count", 0) }} ({{ report.dns_stats.get("nxdomain_rate_pct", 0.0) }}%)
+        </div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Query Type Breakdown</div>
+        <div class="meta-val">
+          {% for qt, qcnt in report.dns_stats.get("query_type_breakdown", {}).items() %}
+            <span class="badge-tag">{{ qt }}: {{ qcnt }}</span>
+          {% else %}-{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if report.dns_anomalies %}
+    <h3 style="margin:0 0 10px;font-size:14.5px;color:#fdba74;">Detected DNS Anomalies</h3>
+    <div class="table-wrap" style="margin-bottom:18px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Anomaly Type</th>
+            <th>Client IP</th>
+            <th>Domain</th>
+            <th class="num">Score</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in report.dns_anomalies %}
+          <tr>
+            <td><span class="badge badge-{{ a.severity }}">{{ a.severity }}</span></td>
+            <td><code>{{ a.anomaly_type }}</code></td>
+            <td><code>{{ a.src_ip }}</code></td>
+            <td><code>{{ a.domain }}</code></td>
+            <td class="num mono">{{ "%.2f"|format(a.score) }}</td>
+            <td style="font-size:12.2px;color:var(--text-secondary);">{{ a.details }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <h3 style="margin:0 0 10px;font-size:14.5px;color:var(--text-secondary);">Passive DNS Mapping Table</h3>
+    {% if report.passive_dns %}
+    <div class="table-wrap">
+      <table id="pdns-table">
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>Resolved IPs (A / AAAA)</th>
+            <th>CNAME / TXT</th>
+            <th>Types</th>
+            <th class="num">Queries</th>
+            <th class="num">NXDOMAIN</th>
+            <th class="num">Max Entropy</th>
+            <th>Clients</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.passive_dns[:150] %}
+          <tr>
+            <td><code>{{ r.domain }}</code></td>
+            <td>{% for ip in r.resolved_ips %}<code style="margin-right:4px;">{{ ip }}</code>{% else %}-{% endfor %}</td>
+            <td style="font-size:12px;color:var(--text-secondary);">
+              {% for cn in r.cnames %}<div>CNAME: <code>{{ cn }}</code></div>{% endfor %}
+              {% for tx in r.txt_records[:2] %}<div>TXT: <code>{{ tx[:90] }}</code></div>{% endfor %}
+              {% if not r.cnames and not r.txt_records %}-{% endif %}
+            </td>
+            <td>{% for qt in r.query_types %}<span class="badge-tag">{{ qt }}</span>{% endfor %}</td>
+            <td class="num">{{ r.query_count }}</td>
+            <td class="num" style="color:{{ '#fca5a5' if r.nxdomain_count else 'inherit' }};">{{ r.nxdomain_count }}</td>
+            <td class="num mono" style="color:{{ '#fdba74' if r.max_label_entropy >= 3.5 else 'inherit' }};">{{ "%.2f"|format(r.max_label_entropy) }}</td>
+            <td>{% for cip in r.client_ips %}<code>{{ cip }}</code> {% endfor %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No passive DNS entries recorded.</p>
+    {% endif %}
+  </section>
+
+  <!-- Carved HTTP Objects & File Hashes -->
+  <section class="section" id="carved">
+    <div class="section-header">
+      <h2>Carved HTTP Objects &amp; Cryptographic Hashes <span class="section-count">{{ report.carved_artifacts | length }}</span></h2>
+    </div>
+    {% if report.carved_artifacts %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Filename &amp; Source URL</th>
+            <th class="num">Size</th>
+            <th>Declared Content-Type</th>
+            <th>Magic-Byte MIME Type</th>
+            <th>Cryptographic Hashes (MD5 / SHA-256)</th>
+            <th>Quarantine Path</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in report.carved_artifacts %}
+          <tr>
+            <td><code>{{ c.artifact_id }}</code></td>
+            <td>
+              <div style="font-weight:600;">
+                <code>{{ c.filename }}</code>
+                {% if c.is_executable %}<span class="badge badge-CRITICAL" style="margin-left:5px;">EXECUTABLE</span>{% endif %}
+                {% if c.is_script %}<span class="badge badge-MEDIUM" style="margin-left:5px;">SCRIPT</span>{% endif %}
+                {% if c.mime_mismatch %}<span class="badge badge-HIGH" style="margin-left:5px;">MIME MISMATCH</span>{% endif %}
+              </div>
+              <div style="font-size:11.8px;color:var(--text-secondary);margin-top:3px;">{{ c.full_url }}</div>
+            </td>
+            <td class="num">{{ c.size_bytes | fmt_bytes }}</td>
+            <td><code>{{ c.declared_content_type }}</code></td>
+            <td>
+              <div><code>{{ c.detected_mime_type }}</code></div>
+              <div style="font-size:11.5px;color:var(--text-muted);">{{ c.magic_description }}</div>
+            </td>
+            <td style="font-size:11.5px;">
+              <div><strong>MD5:</strong> <code>{{ c.md5 }}</code><button class="copy-btn" onclick="copyText('{{ c.md5 }}')">Copy</button></div>
+              <div style="margin-top:4px;"><strong>SHA-256:</strong> <code>{{ c.sha256 }}</code><button class="copy-btn" onclick="copyText('{{ c.sha256 }}')">Copy</button></div>
+            </td>
+            <td class="mono" style="font-size:11.5px;color:var(--text-secondary);">
+              {{ c.saved_path or 'Not written (--extract-files disabled)' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No HTTP 200 OK file payloads were carved from this capture.</p>
+    {% endif %}
+  </section>
+
+</main>
+
+<div id="toast">Copied to clipboard</div>
+
+<script>
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showToast).catch(function() { fallbackCopy(text); });
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text) {
+  var el = document.createElement('textarea');
+  el.value = text;
+  document.body.appendChild(el);
+  el.select();
+  try { document.execCommand('copy'); showToast(); } catch (e) {}
+  document.body.removeChild(el);
+}
+function showToast() {
+  var t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 1500);
+}
+function filterTable(tableId, query) {
+  var q = (query || '').toLowerCase();
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var rows = table.querySelectorAll('tbody tr');
+  rows.forEach(function(row) {
+    var txt = row.textContent.toLowerCase();
+    row.style.display = txt.indexOf(q) !== -1 ? '' : 'none';
+  });
+}
+function filterSeverity(sev, btn) {
+  var buttons = btn.parentElement.querySelectorAll('.filter-btn');
+  buttons.forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  var rows = document.querySelectorAll('#findings-table tbody tr');
+  rows.forEach(function(row) {
+    if (sev === 'ALL' || row.getAttribute('data-severity') === sev) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+</script>
+</body>
+</html>
