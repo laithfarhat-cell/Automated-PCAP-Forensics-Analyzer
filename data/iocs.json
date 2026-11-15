@@ -1,0 +1,114 @@
+{
+  "schema_version": "1.0.0",
+  "updated_at": "2026-11-15T00:00:00Z",
+  "description": "Local DFIR Threat Intelligence Watchlist for Automated PCAP Forensics Analyzer. Uses RFC 5737 TEST-NET IPs, RFC 2606 .example domains, EICAR, and synthetic test payload hashes for safe verification.",
+  "malicious_ips": [
+    {
+      "ip": "198.51.100.42",
+      "severity": "CRITICAL",
+      "threat_type": "Command & Control (C2) Server",
+      "source": "Internal DFIR Watchlist",
+      "description": "Known adversary C2 relay node observed hosting HTTP/TLS beacons and staging payloads.",
+      "mitre_attack": ["T1071.001", "T1573"],
+      "tags": ["c2", "apt", "beacon"]
+    },
+    {
+      "ip": "203.0.113.77",
+      "severity": "HIGH",
+      "threat_type": "Malware Dropper Distribution Host",
+      "source": "Internal DFIR Watchlist",
+      "description": "External staging server associated with masqueraded PE dropper delivery.",
+      "mitre_attack": ["T1105", "T1036"],
+      "tags": ["dropper", "staging"]
+    },
+    {
+      "cidr": "198.51.100.128/25",
+      "severity": "MEDIUM",
+      "threat_type": "Bulletproof Hosting Range",
+      "source": "OSINT Threat Feed",
+      "description": "Suspicious bulletproof hosting subnet frequently abused for scanning and credential stuffing.",
+      "mitre_attack": ["T1583.003"],
+      "tags": ["bulletproof", "scanner"]
+    }
+  ],
+  "malicious_domains": [
+    {
+      "domain": "malicious-c2.example",
+      "severity": "CRITICAL",
+      "threat_type": "Adversary C2 Infrastructure",
+      "source": "Internal DFIR Watchlist",
+      "description": "Primary C2 apex domain and associated subdomains used for HTTP/TLS beaconing and email drops.",
+      "mitre_attack": ["T1071.001", "T1041"],
+      "tags": ["c2", "exfiltration"]
+    },
+    {
+      "domain": "exfil-dns.example",
+      "severity": "CRITICAL",
+      "threat_type": "DNS Tunneling Exfiltration Domain",
+      "source": "Internal DFIR Watchlist",
+      "description": "Authoritative name server domain associated with DNS TXT/subdomain data exfiltration.",
+      "mitre_attack": ["T1071.004", "T1048.003"],
+      "tags": ["dns-tunneling", "exfiltration"]
+    },
+    {
+      "domain": "dropper-cdn.example",
+      "severity": "HIGH",
+      "threat_type": "Payload Staging CDN",
+      "source": "Internal DFIR Watchlist",
+      "description": "Malicious content delivery domain hosting trojanized binaries.",
+      "mitre_attack": ["T1105"],
+      "tags": ["malware-delivery"]
+    },
+    {
+      "domain": "evil-dga-net.example",
+      "severity": "HIGH",
+      "threat_type": "DGA Sinkhole / C2 Parent Domain",
+      "source": "Threat Intel Feed",
+      "description": "Known DGA campaign parent zone exhibiting high-entropy NXDOMAIN queries.",
+      "mitre_attack": ["T1568.002"],
+      "tags": ["dga", "botnet"]
+    }
+  ],
+  "malicious_hashes": [
+    {
+      "md5": "e02c395e05c24d8efb4a91aa5110fbec",
+      "sha256": "c094389fb726101109311b34a1108283b40aa0b95c5a72285e1bead5071df5f6",
+      "severity": "CRITICAL",
+      "threat_type": "Known Synthetic PE Dropper (DFIR Test Artifact)",
+      "source": "Internal DFIR Malware Lab",
+      "description": "Matches synthetic PE dropper payload (update_patch.exe) masqueraded as image/png.",
+      "mitre_attack": ["T1105", "T1036.005"],
+      "tags": ["pe32", "dropper", "synthetic-test"]
+    },
+    {
+      "md5": "44d88612fea8a8f36de82e1278abb02f",
+      "sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "severity": "HIGH",
+      "threat_type": "EICAR Standard Anti-Malware Test File",
+      "source": "EICAR",
+      "description": "Standard non-malicious AV/DFIR validation signature.",
+      "mitre_attack": ["T1105"],
+      "tags": ["eicar", "validation"]
+    }
+  ],
+  "suspicious_user_agents": [
+    {
+      "pattern": "EvilBot/1.0",
+      "severity": "HIGH",
+      "threat_type": "Known Malicious HTTP Automation Agent",
+      "source": "Internal DFIR Watchlist",
+      "description": "Observed in automated reconnaissance and credential harvesting traffic.",
+      "mitre_attack": ["T1071.001"],
+      "tags": ["bot", "recon"]
+    },
+    {
+      "pattern": "sqlmap",
+      "severity": "HIGH",
+      "threat_type": "Automated SQL Injection Tool",
+      "source": "SOC Detection Rules",
+      "description": "Default User-Agent signature for sqlmap exploitation framework.",
+      "mitre_attack": ["T1190"],
+      "tags": ["sqli", "scanner"]
+    }
+  ]
+}
